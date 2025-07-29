@@ -144,7 +144,7 @@ After deployment, services will be available at:
 - **Monitoring Dashboard**: `http://localhost:3000`
 - **Database connections**: See individual service documentation
 
-> **Note**: Configure a reverse proxy (nginx, Traefik) for production deployments with proper SSL/TLS termination.
+> **Note**: Configure a reverse proxy (nginx, Traefik) for production deployments with proper SSL/TLS termination. NGINX Example Config located under /nginx folder
 
 ## 📚 Documentation
 
