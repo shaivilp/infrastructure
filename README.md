@@ -182,4 +182,4 @@ This infrastructure setup is intended for self-hosting enthusiasts and small to 
 
 **Happy self-hosting! 🏠**
 
-**Configs managed, developed and created by Shaivil Patel**
+**All Configs managed, developed and created by Shaivil Patel**
