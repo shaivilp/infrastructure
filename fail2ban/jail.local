@@ -1,0 +1,36 @@
+[DEFAULT]
+# Ban settings
+bantime = 3600
+findtime = 600
+maxretry = 3
+
+# Whitelist your IPs (replace with your actual IPs)
+ignoreip = 127.0.0.1/8 ::1 
+
+# Email settings
+destemail = codins@gmail.com
+sender = fail2ban@mail.homelab.com
+sendername = Fail2Ban-SSH
+mta = mail
+
+# Action - ban and send email with logs
+action = discord[name=%(__name__)s]
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 3600
+findtime = 600
+
+[sshd-aggressive]
+# Bans IPs that attempt auth with invalid usernames
+enabled = true
+port = ssh
+filter = sshd[mode=aggressive]
+logpath = /var/log/auth.log
+maxretry = 1
+bantime = 86400
+findtime = 3600

@@ -1,0 +1,39 @@
+services:
+  nextcloud:
+    image: nextcloud
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      - nextclouddb
+    networks:
+      - cloud
+    ports:
+      - 8081:80
+    volumes:
+      - ./html:/var/www/html
+      - ./custom_apps:/var/www/html/custom_apps
+      - ./config:/var/www/html/config
+      - ./data:/var/www/html/data
+    env_file:
+      - .env
+    environment:
+      - MYSQL_HOST=nextclouddb
+
+  nextclouddb:
+    image: mariadb
+    container_name: nextcloud-db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    networks:
+      - cloud
+    volumes:
+      - ./nextclouddb:/var/lib/mysql
+    env_file:
+      - .env
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+
+networks:
+  cloud:
+    name: cloud
+    driver: bridge

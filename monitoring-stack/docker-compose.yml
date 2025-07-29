@@ -1,0 +1,141 @@
+services:
+  # Loki
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    ports:
+      - "127.0.0.1:10110:3100"  # Host port 10110 -> Container port 3100
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Promtail
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: promtail
+    ports:
+      - "127.0.0.1:10082:9080"  # Host port 10082 -> Container port 9080
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail-config-host.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "127.0.0.1:10090:9090"  # Host port 10090 -> Container port 9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.external-url=https://monitoring.vicisportscience.com/prometheus/'
+      - '--web.route-prefix=/'
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Node Exporter
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "127.0.0.1:10101:9100"  # Host port 10101 -> Container port 9100
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # cAdvisor
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "127.0.0.1:10081:8080"  # Host port 10081 -> Container port 8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Alertmanager
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"  # Host port 9093 -> Container port 9093
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=https://monitoring.vicisportscience.com/alertmanager/'
+      - '--web.route-prefix=/'
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "127.0.0.1:10000:3000"  # Host port 10000 -> Container port 3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://monitoring.vicisportscience.com/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - loki
+      - prometheus
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  loki-data:
+  prometheus-data:
+  grafana-data:
+  alertmanager-data:

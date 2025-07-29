@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./config/pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - ./certs:/certs:ro
+      - pgdata:/var/lib/postgresql/data
+    env_file:
+      - .env
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: unless-stopped
+    ports:
+      - "4000:80"
+    env_file:
+      - .env
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+  pgadmin_data:

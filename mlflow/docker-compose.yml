@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: mlflow_postgres
+    environment:
+      POSTGRES_DB: mlflow
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "6665:5432"
+    networks:
+      - mlflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MLflow tracking server
+  mlflow:
+    image: python:3.9-slim
+    container_name: mlflow_server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow_password@postgres:5432/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts/
+      - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY}
+      - MLFLOW_S3_ENDPOINT_URL=${MINIO_ENDPOINT}
+      - MLFLOW_HOST=0.0.0.0
+    ports:
+      - "13000:5000"
+    networks:
+      - mlflow_network
+    volumes:
+      - ./mlflow_server:/mlflow
+    working_dir: /mlflow
+    command: >
+      bash -c "
+      pip install mlflow[extras] psycopg2-binary boto3 &&
+      mlflow server 
+        --backend-store-uri postgresql://mlflow:mlflow_password@postgres:5432/mlflow
+        --default-artifact-root s3://mlflow-artifacts/
+        --artifacts-destination s3://mlflow-artifacts/
+        --serve-artifacts
+        --host 0.0.0.0
+        --port 5000
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  mlflow_network:
+    driver: bridge

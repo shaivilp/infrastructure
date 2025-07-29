@@ -1,0 +1,99 @@
+# alert_rules.yml
+groups:
+  - name: system_alerts
+    rules:
+      # Instance down alert
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} is down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute."
+
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% for more than 5 minutes."
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% for more than 5 minutes."
+
+      # High disk usage
+      - alert: HighDiskUsage
+        expr: (node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_free_bytes{fstype!="tmpfs"}) / node_filesystem_size_bytes{fstype!="tmpfs"} * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Disk usage is above 90% on {{ $labels.mountpoint }}."
+
+  - name: container_alerts
+    rules:
+      # Container down
+      - alert: ContainerDown
+        expr: absent(container_last_seen{name!=""})
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} is down"
+          description: "Container {{ $labels.name }} has been down for more than 1 minute."
+
+      # High container CPU
+      - alert: ContainerHighCPU
+        expr: rate(container_cpu_usage_seconds_total{name!=""}[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage in container {{ $labels.name }}"
+          description: "Container {{ $labels.name }} CPU usage is above 80%."
+
+      # High container memory
+      - alert: ContainerHighMemory
+        expr: container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""} * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage in container {{ $labels.name }}"
+          description: "Container {{ $labels.name }} memory usage is above 90%."
+
+  - name: loki_alerts
+    rules:
+      # Loki ingestion errors
+      - alert: LokiIngestionErrors
+        expr: rate(loki_ingester_ingestion_rate_limit_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Loki ingestion rate limit errors"
+          description: "Loki is experiencing ingestion rate limit errors."
+
+  - name: nginx_alerts
+    rules:
+      # High error rate
+      - alert: NginxHighErrorRate
+        expr: rate(nginx_http_requests_total{status=~"4.*|5.*"}[5m]) / rate(nginx_http_requests_total[5m]) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High nginx error rate"
+          description: "Nginx error rate is above 5% for more than 5 minutes."
